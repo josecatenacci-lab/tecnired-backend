@@ -1,96 +1,82 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-import jwt
 import datetime
-from functools import wraps
-from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
-import os
 
 app = Flask(__name__)
-CORS(app)
 
-# 🔐 CONFIGURACIÓN
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev_key_super_secreta_123")
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# 🛡️ BLINDAJE CORS: Permite que tu app de Flutter (Web y Móvil) se conecte sin bloqueos
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-db = SQLAlchemy(app)
+# Simulación de Base de Datos (Para pruebas rápidas)
+users_db = []
 
-# 👥 MODELO DE USUARIO
-class User(db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), unique=True, nullable=False) # Nombre ahora es Único
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), default="technician")
+@app.route('/')
+def home():
+    return jsonify({
+        "status": "online",
+        "message": "Servidor de Tecnired operando correctamente",
+        "time": datetime.datetime.now().isoformat()
+    })
 
-# 🔄 TIENDA TEMPORAL DE REFRESH TOKENS
-refresh_store = {}
-
-with app.app_context():
-    db.create_all()
-
-# --- RUTAS ---
-
-@app.route("/auth/register", methods=["POST"])
+# 📝 RUTA DE REGISTRO (La que llama tu RegisterScreen)
+@app.route('/api/auth/register', methods=['POST'])
 def register():
-    data = request.get_json() or {}
-    username = data.get("username")
-    email = data.get("email")
-    password = data.get("password")
-    role = data.get("role", "technician")
+    try:
+        data = request.get_json()
+        
+        # Validación de datos recibidos
+        if not data:
+            return jsonify({"error": "No se recibieron datos"}), 400
+            
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password')
 
-    if not username or not email or not password:
-        return jsonify({"message": "Faltan datos obligatorios"}), 400
+        # Verificación de campos obligatorios
+        if not all([name, email, password]):
+            return jsonify({"error": "Faltan campos obligatorios"}), 400
 
-    # 1. Validar si el Nombre de Usuario ya existe
-    if User.query.filter_by(nombre=username).first():
-        return jsonify({"message": "El nombre de usuario no está disponible"}), 409
+        # Lógica de registro (Aquí conectarías con tu DB real)
+        # Por ahora simulamos que el correo no esté duplicado
+        if any(user['email'] == email for user in users_db):
+            return jsonify({"error": "El correo ya está registrado"}), 409
 
-    # 2. Validar si el Email ya existe
-    if User.query.filter_by(email=email).first():
-        return jsonify({"message": "El correo ya está registrado"}), 400
-
-    new_user = User(
-        nombre=username,
-        email=email,
-        password=generate_password_hash(password),
-        role=role
-    )
-    
-    db.session.add(new_user)
-    db.session.commit()
-    
-    return jsonify({"message": "¡Registro exitoso!"}), 201
-
-@app.route("/auth/login", methods=["POST"])
-def login():
-    data = request.get_json() or {}
-    email = data.get("email")
-    password = data.get("password")
-
-    user = User.query.filter_by(email=email).first()
-
-    if user and check_password_hash(user.password, password):
-        access_token = jwt.encode({
-            "user": user.email, "role": user.role,
-            "iat": datetime.datetime.utcnow(),
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=60)
-        }, SECRET_KEY, algorithm="HS256")
-
-        refresh_token = str(uuid.uuid4())
-        refresh_store[refresh_token] = {
-            "email": user.email,
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=7)
+        new_user = {
+            "name": name,
+            "email": email,
+            "password": password # En producción, usa siempre hash (ej: bcrypt)
         }
+        users_db.append(new_user)
 
-        return jsonify({"access_token": access_token, "refresh_token": refresh_token}), 200
+        print(f"✅ Nuevo técnico registrado: {name} ({email})")
+        
+        return jsonify({
+            "message": "¡Registro exitoso!",
+            "user": {"name": name, "email": email}
+        }), 201
 
-    return jsonify({"message": "Credenciales inválidas"}), 401
+    except Exception as e:
+        print(f"❌ Error en el servidor: {str(e)}")
+        return jsonify({"error": "Error interno del servidor"}), 500
 
-if __name__ == "__main__":
+# 🔑 RUTA DE LOGIN
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    # Simulación de validación
+    if email == "admin@gps.cl" and password == "1234":
+        return jsonify({
+            "token": "token-falso-de-prueba-jwt",
+            "message": "Login correcto"
+        }), 200
+    
+    return jsonify({"error": "Credenciales inválidas"}), 401
+
+if __name__ == '__main__':
+    # Render usa la variable de entorno PORT, si no existe usa el 5000
+    import os
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=port)
