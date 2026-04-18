@@ -1,7 +1,4 @@
 flask
 flask-cors
 pyjwt
-werkzeug
 gunicorn
-flask-sqlalchemy
-psycopg2-binary
