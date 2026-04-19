@@ -1,0 +1,61 @@
+{
+  "name": "tecnired-backend",
+  "version": "1.0.0",
+  "description": "Backend modular escalable para sistema GPS + red social técnica + realtime",
+  "main": "src/server.js",
+  "type": "module",
+
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "lint": "eslint .",
+    "test": "jest",
+    "format": "prettier --write ."
+  },
+
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-validator": "^7.2.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.15",
+    "socket.io": "^4.7.5",
+    "uuid": "^10.0.0",
+    "redis": "^4.6.13",
+    "@prisma/client": "^5.19.0"
+  },
+
+  "devDependencies": {
+    "nodemon": "^3.1.4",
+    "prisma": "^5.19.0",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "jest": "^29.7.0"
+  },
+
+  "engines": {
+    "node": ">=18"
+  },
+
+  "keywords": [
+    "backend",
+    "gps",
+    "realtime",
+    "socket.io",
+    "prisma",
+    "express",
+    "iot",
+    "tracking",
+    "reputation-system"
+  ],
+
+  "author": "Jose Catenacci",
+  "license": "MIT"
+}

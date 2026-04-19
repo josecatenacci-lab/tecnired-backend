@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================
+// ENUMS (TIPOS DOMINIO)
+// =========================
+
+enum UserRole {
+  user
+  admin
+}
+
+enum PostType {
+  corte
+  comando
+  libre
+}
+
+enum ReactionType {
+  like
+  dislike
+  fire
+  heart
+}
+
+enum NotificationType {
+  info
+  chat
+  post
+  comment
+  reaction
+  system
+}
+
+// =========================
+// USER
+// =========================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(user)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts        Post[]
+  comments     Comment[]
+  reactions    Reaction[]
+  messagesSent Message[] @relation("MessagesSent")
+  messagesRecv Message[] @relation("MessagesReceived")
+
+  reputation   Reputation?
+  notifications Notification[]
+}
+
+// =========================
+// POSTS
+// =========================
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  type      PostType
+  metadata  Json?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments  Comment[]
+  reactions Reaction[]
+}
+
+// =========================
+// COMMENTS
+// =========================
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+
+  userId    String
+  postId    String
+
+  user      User @relation(fields: [userId], references: [id])
+  post      Post @relation(fields: [postId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// =========================
+// REACTIONS
+// =========================
+
+model Reaction {
+  id        String @id @default(cuid())
+  type      ReactionType
+
+  userId    String
+  postId    String
+
+  user      User @relation(fields: [userId], references: [id])
+  post      Post @relation(fields: [postId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+// =========================
+// CHAT MESSAGES
+// =========================
+
+model Message {
+  id        String @id @default(cuid())
+  content   String
+  room      String @default("global")
+
+  senderId  String
+  receiverId String?
+
+  sender    User @relation("MessagesSent", fields: [senderId], references: [id])
+  receiver  User? @relation("MessagesReceived", fields: [receiverId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// =========================
+// REPUTATION
+// =========================
+
+model Reputation {
+  id        String @id @default(cuid())
+
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+
+  points    Int    @default(0)
+  level     Int    @default(1)
+
+  updatedAt DateTime @updatedAt
+}
+
+// =========================
+// NOTIFICATIONS
+// =========================
+
+model Notification {
+  id        String @id @default(cuid())
+
+  userId    String
+  user      User   @relation(fields: [userId], references: [id])
+
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean @default(false)
+
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+}
+
+// =========================
+// INDEXES (OPTIMIZACIÓN)
+// =========================
+
+model _IndexOptimizations {
+  @@ignore
+}
