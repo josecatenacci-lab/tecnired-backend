@@ -1,69 +1,167 @@
 import { userService } from './user.service.js';
-import { success, error } from '../../utils/response.js';
+import {
+  success,
+  error,
+} from '../../utils/response.js';
 
 // =========================
-// USER CONTROLLER (HTTP LAYER)
+// USER CONTROLLER
 // =========================
 
 export const userController = {
   // =========================
-  // PERFIL
+  // SELF PROFILE
   // =========================
+
   async getProfile(req, res) {
     try {
-      const userId = req.user.id;
+      const user = await userService.getProfile(
+        req.user.id,
+      );
 
-      const user = await userService.getProfile(userId);
-
-      return success(res, user, 'Perfil obtenido');
+      return success(
+        res,
+        user,
+        'Profile fetched',
+      );
     } catch (err) {
-      return error(res, err.message || 'Error al obtener perfil', err.statusCode || 500);
+      return error(
+        res,
+        err.message,
+        err.statusCode,
+      );
     }
   },
 
-  // =========================
-  // ACTUALIZAR PERFIL
-  // =========================
   async updateProfile(req, res) {
     try {
-      const userId = req.user.id;
-      const data = req.body;
+      const updated =
+        await userService.updateProfile(
+          req.user.id,
+          req.body,
+        );
 
-      const updated = await userService.updateProfile(userId, data);
-
-      return success(res, updated, 'Perfil actualizado');
+      return success(
+        res,
+        updated,
+        'Profile updated',
+      );
     } catch (err) {
-      return error(res, err.message || 'Error al actualizar perfil', err.statusCode || 500);
+      return error(
+        res,
+        err.message,
+        err.statusCode,
+      );
     }
   },
 
-  // =========================
-  // CAMBIAR ROL (ADMIN)
-  // =========================
-  async changeRole(req, res) {
-    try {
-      const { userId, role } = req.body;
-
-      const updated = await userService.changeRole(userId, role);
-
-      return success(res, updated, 'Rol actualizado');
-    } catch (err) {
-      return error(res, err.message || 'Error al cambiar rol', err.statusCode || 500);
-    }
-  },
-
-  // =========================
-  // ELIMINAR USUARIO
-  // =========================
   async deleteUser(req, res) {
     try {
-      const userId = req.user.id;
+      await userService.deleteUser(
+        req.user.id,
+      );
 
-      await userService.deleteUser(userId);
-
-      return success(res, null, 'Usuario eliminado');
+      return success(
+        res,
+        null,
+        'User deleted',
+      );
     } catch (err) {
-      return error(res, err.message || 'Error al eliminar usuario', err.statusCode || 500);
+      return error(
+        res,
+        err.message,
+        err.statusCode,
+      );
+    }
+  },
+
+  // =========================
+  // ADMIN / MODERATION
+  // =========================
+
+  async getUsers(req, res) {
+    try {
+      const data =
+        await userService.getUsers(
+          req.query,
+        );
+
+      return success(
+        res,
+        data,
+        'Users fetched',
+      );
+    } catch (err) {
+      return error(
+        res,
+        err.message,
+        err.statusCode,
+      );
+    }
+  },
+
+  async getUserById(req, res) {
+    try {
+      const user =
+        await userService.getUserById(
+          req.params.id,
+        );
+
+      return success(
+        res,
+        user,
+        'User fetched',
+      );
+    } catch (err) {
+      return error(
+        res,
+        err.message,
+        err.statusCode,
+      );
+    }
+  },
+
+  async changeRole(req, res) {
+    try {
+      const updated =
+        await userService.changeRole(
+          req.params.id,
+          req.body.role,
+        );
+
+      return success(
+        res,
+        updated,
+        'Role updated',
+      );
+    } catch (err) {
+      return error(
+        res,
+        err.message,
+        err.statusCode,
+      );
+    }
+  },
+
+  async changeStatus(req, res) {
+    try {
+      const updated =
+        await userService.changeStatus(
+          req.params.id,
+          req.body.status,
+        );
+
+      return success(
+        res,
+        updated,
+        'Status updated',
+      );
+    } catch (err) {
+      return error(
+        res,
+        err.message,
+        err.statusCode,
+      );
     }
   },
 };

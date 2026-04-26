@@ -1,57 +1,180 @@
-import { eventBus } from '../events/eventBus.js';
-import { EVENTS } from '../constants/events.js';
-import { getIO } from '../sockets/index.js';
+import { db } from '../config/db.js';
+import { env } from '../config/env.js';
+import { logger } from '../utils/logger.js';
 
 // =========================
-// JOB: NOTIFICACIONES (ASYNC EVENT DRIVEN)
+// NOTIFICATIONS JOBS
 // =========================
 
-// 🔥 Crear notificación desde eventos del sistema
-const emitNotification = (userId, payload) => {
-  const io = getIO();
-
-  io.to(`user:${userId}`).emit('notification:new', payload);
-};
+let notificationsInterval = null;
 
 // =========================
-// POST CREATED → NOTIFICACIÓN
+// ARCHIVE OLD READ ITEMS
 // =========================
-eventBus.on(EVENTS.POST_CREATED, async ({ post }) => {
-  try {
-    // 👉 Ejemplo futuro: notificar seguidores
-    // emitNotification(followerId, { type: 'post', post });
 
-  } catch (error) {
-    console.error('notifications.job POST_CREATED error:', error.message);
-  }
-});
+const archiveOldReadNotifications =
+  async () => {
+    try {
+      const threshold =
+        new Date(
+          Date.now() -
+            1000 *
+              60 *
+              60 *
+              24 *
+              30,
+        );
+
+      const result =
+        await db.notification.updateMany({
+          where: {
+            status: 'read',
+            readAt: {
+              lt: threshold,
+            },
+          },
+          data: {
+            status:
+              'archived',
+          },
+        });
+
+      logger.info(
+        `Notifications archived: ${result.count}`,
+      );
+
+      return result.count;
+    } catch (error) {
+      logger.error(
+        'notifications.archive error',
+        error,
+      );
+      return 0;
+    }
+  };
 
 // =========================
-// REACTION ADDED → NOTIFICACIÓN
+// DELETE OLD ARCHIVED
 // =========================
-eventBus.on(EVENTS.REACTION_ADDED, async ({ reaction }) => {
-  try {
-    emitNotification(reaction.targetUserId, {
-      type: 'reaction',
-      message: 'Alguien reaccionó a tu publicación',
-      data: reaction,
-    });
-  } catch (error) {
-    console.error('notifications.job REACTION error:', error.message);
-  }
-});
+
+const deleteOldArchivedNotifications =
+  async () => {
+    try {
+      const threshold =
+        new Date(
+          Date.now() -
+            1000 *
+              60 *
+              60 *
+              24 *
+              90,
+        );
+
+      const result =
+        await db.notification.deleteMany({
+          where: {
+            status:
+              'archived',
+            createdAt: {
+              lt: threshold,
+            },
+          },
+        });
+
+      logger.info(
+        `Notifications deleted: ${result.count}`,
+      );
+
+      return result.count;
+    } catch (error) {
+      logger.error(
+        'notifications.cleanup error',
+        error,
+      );
+      return 0;
+    }
+  };
 
 // =========================
-// CHAT MESSAGE → NOTIFICACIÓN
+// RUNNER
 // =========================
-eventBus.on(EVENTS.CHAT_MESSAGE_SENT, async ({ message }) => {
-  try {
-    emitNotification(message.toUserId, {
-      type: 'chat',
-      message: 'Nuevo mensaje recibido',
-      data: message,
-    });
-  } catch (error) {
-    console.error('notifications.job CHAT error:', error.message);
-  }
-});
+
+const runNotificationsMaintenance =
+  async () => {
+    await archiveOldReadNotifications();
+    await deleteOldArchivedNotifications();
+  };
+
+// =========================
+// STARTER
+// =========================
+
+export const startNotificationsJobs =
+  () => {
+    if (
+      env.ENABLE_NOTIFICATION_JOBS !==
+      true
+    ) {
+      logger.info(
+        'Notifications jobs disabled',
+      );
+      return;
+    }
+
+    if (
+      notificationsInterval
+    ) {
+      return;
+    }
+
+    notificationsInterval =
+      setInterval(
+        runNotificationsMaintenance,
+        1000 *
+          60 *
+          60 *
+          24,
+      );
+
+    logger.info(
+      'Notifications jobs started',
+    );
+  };
+
+// =========================
+// STOPPER
+// =========================
+
+export const stopNotificationsJobs =
+  () => {
+    if (
+      notificationsInterval
+    ) {
+      clearInterval(
+        notificationsInterval,
+      );
+
+      notificationsInterval =
+        null;
+
+      logger.info(
+        'Notifications jobs stopped',
+      );
+    }
+  };
+
+// =========================
+// PUBLIC API
+// =========================
+
+export const notificationsJob =
+  {
+    start:
+      startNotificationsJobs,
+    stop:
+      stopNotificationsJobs,
+    archiveOldReadNotifications,
+    deleteOldArchivedNotifications,
+    run:
+      runNotificationsMaintenance,
+  };

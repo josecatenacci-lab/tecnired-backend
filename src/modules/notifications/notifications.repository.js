@@ -1,54 +1,106 @@
 import { db } from '../../config/db.js';
 
-// =========================
-// NOTIFICATIONS REPOSITORY (DB LAYER)
-// =========================
-
 export const notificationsRepository = {
-  // =========================
-  // CREAR NOTIFICACIÓN
-  // =========================
   async create(data) {
-    return await db.notification.create({
+    return db.notification.create({
       data: {
         userId: data.userId,
         type: data.type,
+        status: 'unread',
         title: data.title,
         message: data.message,
-        read: false,
-        metadata: data.metadata || {},
+        metadata:
+          data.metadata || {},
       },
     });
   },
 
-  // =========================
-  // OBTENER NOTIFICACIONES POR USUARIO
-  // =========================
-  async findByUser(userId, limit = 20) {
-    return await db.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
+  async findByUser(
+    userId,
+    {
+      page = 1,
+      limit = 20,
+      status,
+    },
+  ) {
+    const skip =
+      (page - 1) * limit;
+
+    const where = {
+      userId,
+      ...(status && {
+        status,
+      }),
+    };
+
+    const [items, total] =
+      await Promise.all([
+        db.notification.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
+        db.notification.count({
+          where,
+        }),
+      ]);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(
+          total / limit,
+        ),
+      },
+    };
+  },
+
+  async findOwned(
+    userId,
+    id,
+  ) {
+    return db.notification.findFirst({
+      where: {
+        id,
+        userId,
+      },
     });
   },
 
-  // =========================
-  // MARCAR COMO LEÍDA
-  // =========================
-  async markAsRead(notificationId) {
-    return await db.notification.update({
-      where: { id: notificationId },
-      data: { read: true },
+  async update(
+    id,
+    data,
+  ) {
+    return db.notification.update({
+      where: { id },
+      data,
     });
   },
 
-  // =========================
-  // MARCAR TODAS COMO LEÍDAS
-  // =========================
-  async markAllAsRead(userId) {
-    return await db.notification.updateMany({
-      where: { userId },
-      data: { read: true },
+  async markAllAsRead(
+    userId,
+  ) {
+    return db.notification.updateMany({
+      where: {
+        userId,
+        status: 'unread',
+      },
+      data: {
+        status: 'read',
+        readAt: new Date(),
+      },
+    });
+  },
+
+  async remove(id) {
+    return db.notification.delete({
+      where: { id },
     });
   },
 };

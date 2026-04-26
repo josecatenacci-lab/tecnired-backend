@@ -1,54 +1,125 @@
 import { db } from '../../config/db.js';
 
-// =========================
-// USER REPOSITORY (DB LAYER)
-// =========================
+const baseSelect = {
+  id: true,
+  email: true,
+  name: true,
+  username: true,
+  avatarUrl: true,
+  bio: true,
+  phone: true,
+  role: true,
+  status: true,
+  specialty: true,
+  country: true,
+  city: true,
+  createdAt: true,
+  updatedAt: true,
+};
 
 export const userRepository = {
-  // =========================
-  // OBTENER TODOS LOS USUARIOS (PAGINADO FUTURO)
-  // =========================
-  async findAll() {
-    return await db.user.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+  async findMany({
+    page = 1,
+    limit = 20,
+    search,
+  }) {
+    const skip = (page - 1) * limit;
+
+    const where = {
+      deletedAt: null,
+      ...(search && {
+        OR: [
+          {
+            name: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            email: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            username: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }),
+    };
+
+    const [items, total] =
+      await Promise.all([
+        db.user.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          select: baseSelect,
+        }),
+        db.user.count({ where }),
+      ]);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(
+          total / limit,
+        ),
+      },
+    };
   },
 
-  // =========================
-  // BUSCAR POR ID
-  // =========================
   async findById(id) {
-    return await db.user.findUnique({
-      where: { id },
+    return db.user.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: baseSelect,
     });
   },
 
-  // =========================
-  // ACTUALIZAR PERFIL
-  // =========================
   async update(id, data) {
-    return await db.user.update({
+    return db.user.update({
       where: { id },
       data,
+      select: baseSelect,
     });
   },
 
-  // =========================
-  // CAMBIAR ROL (ADMIN)
-  // =========================
   async updateRole(id, role) {
-    return await db.user.update({
+    return db.user.update({
       where: { id },
       data: { role },
+      select: baseSelect,
     });
   },
 
-  // =========================
-  // ELIMINAR USUARIO
-  // =========================
-  async delete(id) {
-    return await db.user.delete({
+  async updateStatus(id, status) {
+    return db.user.update({
       where: { id },
+      data: { status },
+      select: baseSelect,
+    });
+  },
+
+  async softDelete(id) {
+    return db.user.update({
+      where: { id },
+      data: {
+        status: 'deleted',
+        deletedAt: new Date(),
+      },
+      select: baseSelect,
     });
   },
 };

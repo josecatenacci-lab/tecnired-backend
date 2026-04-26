@@ -1,31 +1,70 @@
 import rateLimit from 'express-rate-limit';
+import { env } from '../config/env.js';
+
+const jsonHandler =
+  (message) =>
+  (_req, res) => {
+    res.status(429).json({
+      success: false,
+      message,
+    });
+  };
 
 // =========================
-// RATE LIMITER (ANTI-SPAM / ANTI-ATTACK)
+// GLOBAL LIMITER
 // =========================
 
 export const rateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 200, // máximo requests por IP
+  windowMs: env.RATE_LIMIT_WINDOW,
+  max: env.RATE_LIMIT_MAX,
+
   standardHeaders: true,
   legacyHeaders: false,
 
-  message: {
-    ok: false,
-    message: 'Demasiadas solicitudes, intenta más tarde',
-  },
+  keyGenerator: (req) =>
+    req.ip ||
+    req.headers['x-forwarded-for'] ||
+    'unknown',
+
+  handler: jsonHandler(
+    'Too many requests, try again later.',
+  ),
 });
 
 // =========================
-// STRICT LIMIT (AUTH / LOGIN)
+// AUTH LIMITER
 // =========================
 
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // más estricto para login/register
+  max: 20,
 
-  message: {
-    ok: false,
-    message: 'Demasiados intentos de autenticación',
-  },
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  keyGenerator: (req) =>
+    req.ip ||
+    req.headers['x-forwarded-for'] ||
+    'unknown',
+
+  handler: jsonHandler(
+    'Too many authentication attempts.',
+  ),
 });
+
+// =========================
+// STRICT ACTIONS
+// =========================
+
+export const strictRateLimiter =
+  rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 10,
+
+    standardHeaders: true,
+    legacyHeaders: false,
+
+    handler: jsonHandler(
+      'Action temporarily blocked.',
+    ),
+  });

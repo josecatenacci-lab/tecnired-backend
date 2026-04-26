@@ -1,25 +1,68 @@
 import cors from 'cors';
 import { env } from '../config/env.js';
 
-// =========================
-// CORS CONFIG (PRODUCTION SAFE)
-// =========================
+const parseOrigins = () => {
+  const raw =
+    env.CORS_ORIGIN ||
+    env.CLIENT_URL ||
+    '';
+
+  return raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const allowedOrigins = parseOrigins();
 
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
-    const allowedOrigins = env.CLIENT_URL
-      ? env.CLIENT_URL.split(',')
-      : ['*'];
-
-    // Permitir requests sin origin (Postman, mobile apps)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    // Postman, mobile apps, server-to-server
+    if (!origin) {
       return callback(null, true);
     }
 
-    return callback(new Error('❌ Bloqueado por CORS'));
+    // desarrollo libre local opcional
+    if (
+      env.NODE_ENV === 'development' &&
+      allowedOrigins.length === 0
+    ) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(
+      new Error('Blocked by CORS'),
+    );
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+
+  credentials:
+    env.CORS_CREDENTIALS === true,
+
+  methods: [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
+  ],
+
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+  ],
+
+  exposedHeaders: [
+    'Content-Length',
+    'Content-Type',
+  ],
+
+  optionsSuccessStatus: 204,
+  maxAge: 86400,
 });

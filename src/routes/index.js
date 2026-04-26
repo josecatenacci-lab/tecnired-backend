@@ -1,22 +1,50 @@
 import { Router } from 'express';
 
-// modules
-import authRoutes from '../modules/auth/auth.routes.js';
+import healthRoutes from '../modules/health/health.routes.js';
 import userRoutes from '../modules/users/user.routes.js';
-import postRoutes from '../modules/posts/posts.routes.js';
-import chatRoutes from '../modules/chat/chat.routes.js';
-import commentRoutes from '../modules/comments/comments.routes.js';
+import reputationRoutes from '../modules/reputation/reputation.routes.js';
+import notificationsRoutes from '../modules/notifications/notifications.routes.js';
+import searchRoutes from '../modules/search/search.routes.js';
+import toolsRoutes from '../modules/tools/tools.routes.js';
 
 const router = Router();
 
 // =========================
-// API ROUTES
+// SYSTEM
 // =========================
 
-router.use('/auth', authRoutes);
-router.use('/users', userRoutes);
-router.use('/posts', postRoutes);
-router.use('/chat', chatRoutes);
-router.use('/comments', commentRoutes);
+router.use(
+  '/health',
+  healthRoutes,
+);
+
+// =========================
+// CORE MODULES
+// =========================
+
+router.use(
+  '/users',
+  userRoutes,
+);
+
+router.use(
+  '/reputation',
+  reputationRoutes,
+);
+
+router.use(
+  '/notifications',
+  notificationsRoutes,
+);
+
+router.use(
+  '/search',
+  searchRoutes,
+);
+
+router.use(
+  '/tools',
+  toolsRoutes,
+);
 
 export default router;

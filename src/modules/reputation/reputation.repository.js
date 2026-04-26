@@ -1,39 +1,40 @@
 import { db } from '../../config/db.js';
 
-// =========================
-// REPUTATION REPOSITORY (DB LAYER)
-// =========================
-
 export const reputationRepository = {
-  // =========================
-  // OBTENER REPUTACIÓN DE USUARIO
-  // =========================
   async getByUserId(userId) {
-    return await db.reputation.findUnique({
+    return db.reputation.findUnique({
       where: { userId },
     });
   },
 
-  // =========================
-  // CREAR O INICIALIZAR REPUTACIÓN
-  // =========================
   async createIfNotExists(userId) {
-    return await db.reputation.upsert({
+    return db.reputation.upsert({
       where: { userId },
       update: {},
       create: {
         userId,
         points: 0,
         level: 1,
+        rank: 'rookie',
       },
     });
   },
 
-  // =========================
-  // ACTUALIZAR PUNTOS
-  // =========================
-  async updatePoints(userId, points) {
-    return await db.reputation.update({
+  async updateStats(
+    userId,
+    data,
+  ) {
+    return db.reputation.update({
+      where: { userId },
+      data,
+    });
+  },
+
+  async updatePoints(
+    userId,
+    points,
+  ) {
+    return db.reputation.update({
       where: { userId },
       data: {
         points: {
@@ -43,13 +44,103 @@ export const reputationRepository = {
     });
   },
 
-  // =========================
-  // ACTUALIZAR NIVEL
-  // =========================
-  async updateLevel(userId, level) {
-    return await db.reputation.update({
+  async updateLevel(
+    userId,
+    level,
+  ) {
+    return db.reputation.update({
       where: { userId },
       data: { level },
     });
+  },
+
+  async createEvent(data) {
+    return db.reputationEvent.create({
+      data,
+    });
+  },
+
+  async getHistory(
+    userId,
+    {
+      page = 1,
+      limit = 20,
+    },
+  ) {
+    const skip =
+      (page - 1) * limit;
+
+    const where = { userId };
+
+    const [items, total] =
+      await Promise.all([
+        db.reputationEvent.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
+        db.reputationEvent.count({
+          where,
+        }),
+      ]);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(
+          total / limit,
+        ),
+      },
+    };
+  },
+
+  async getRanking({
+    page = 1,
+    limit = 20,
+  }) {
+    const skip =
+      (page - 1) * limit;
+
+    const [items, total] =
+      await Promise.all([
+        db.reputation.findMany({
+          skip,
+          take: limit,
+          orderBy: [
+            {
+              points: 'desc',
+            },
+          ],
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        }),
+        db.reputation.count(),
+      ]);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(
+          total / limit,
+        ),
+      },
+    };
   },
 };

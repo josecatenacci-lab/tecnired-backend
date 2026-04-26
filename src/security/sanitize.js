@@ -2,20 +2,36 @@ import mongoSanitize from 'express-mongo-sanitize';
 import xss from 'xss-clean';
 
 // =========================
-// SANITIZATION LAYER (ANTI INJECTION / XSS)
+// SUB-MIDDLEWARES
 // =========================
 
-// 🔥 Limpia queries contra NoSQL injection (Mongo-style attacks)
-export const mongoSanitizeMiddleware = mongoSanitize();
+export const mongoSanitizeMiddleware =
+  mongoSanitize({
+    replaceWith: '_',
+  });
 
-// 🔥 Limpia inputs contra XSS (scripts maliciosos)
 export const xssMiddleware = xss();
 
 // =========================
-// COMBINADO (RECOMENDADO)
+// MAIN SANITIZER
 // =========================
 
-export const sanitizeMiddleware = (app) => {
-  app.use(mongoSanitizeMiddleware);
-  app.use(xssMiddleware);
+export const sanitizeMiddleware = (
+  req,
+  res,
+  next,
+) => {
+  mongoSanitizeMiddleware(
+    req,
+    res,
+    (error) => {
+      if (error) return next(error);
+
+      xssMiddleware(
+        req,
+        res,
+        next,
+      );
+    },
+  );
 };

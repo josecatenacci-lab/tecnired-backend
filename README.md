@@ -1,160 +1,169 @@
-# 🚀 TecniRed Backend
+backend/README.md
+# 🚀 TecniRed Backend V1
 
-Backend modular escalable para sistema técnico GPS + red social profesional + comunicación en tiempo real.
+Backend oficial de **TecniRed**, plataforma profesional para técnicos GPS, telemetría vehicular y comunidad técnica colaborativa.
 
----
-
-## 📌 Características principales
-
-- 🔐 Autenticación JWT segura
-- ⚡ API REST modular (Express)
-- 💬 Chat en tiempo real (Socket.IO)
-- 🧠 Sistema de reputación (gamificación)
-- 📰 Feed tipo red social técnica
-- 💬 Comentarios y reacciones
-- 🔔 Notificaciones en tiempo real
-- 📦 Arquitectura Event-Driven
-- 🧩 Separación completa por capas (Controller / Service / Repository)
-- 🗄️ Prisma ORM + PostgreSQL
-- ⚡ Redis (cache + sockets + futuras colas)
-- 📁 Uploads de archivos locales (MVP)
+Diseñado para escalar desde MVP a producto enterprise.
 
 ---
 
-## 🏗️ Arquitectura
+# 📌 Stack Principal
 
-
-src/
-├── modules/
-│ ├── auth/
-│ ├── users/
-│ ├── posts/
-│ ├── chat/
-│ ├── comments/
-│ ├── reactions/
-│ ├── reputation/
-│ ├── notifications/
-│
-├── services/
-├── sockets/
-├── events/
-├── middleware/
-├── utils/
-├── config/
-└── server.js
-
+- Node.js
+- Express.js
+- PostgreSQL
+- Prisma ORM
+- Redis
+- Socket.IO
+- JWT Auth
+- Nodemailer
+- BullMQ (colas / jobs)
+- Firebase (push / servicios externos futuros)
 
 ---
 
-## ⚙️ Instalación
+# 🧠 Objetivo del Backend
 
-```bash
+Centralizar y exponer servicios para:
+
+- Usuarios y perfiles técnicos
+- Sistema de reputación profesional
+- Feed técnico / publicaciones
+- Comentarios y reacciones
+- Notificaciones en tiempo real
+- Herramientas GPS
+- Búsqueda inteligente
+- Caché distribuido
+- Jobs automáticos
+
+---
+
+# 🏗️ Arquitectura Oficial
+
+```text
+backend/
+├── prisma/
+├── src/
+│   ├── config/
+│   ├── constants/
+│   ├── dto/
+│   ├── middleware/
+│   ├── security/
+│   ├── modules/
+│   │   ├── health/
+│   │   ├── users/
+│   │   ├── reputation/
+│   │   ├── notifications/
+│   │   ├── search/
+│   │   └── tools/
+│   ├── services/shared/
+│   ├── jobs/
+│   ├── routes/
+│   └── utils/
+└── package.json
+⚙️ Instalación
 npm install
-🔧 Configuración
+🔐 Variables de Entorno
 
-Crear archivo .env:
+Crear archivo:
+
+backend/.env
+
+Ejemplo mínimo:
 
 NODE_ENV=development
 PORT=3000
-DATABASE_URL=postgresql://user:pass@localhost:5432/tecnired
-JWT_SECRET=super_secret_key
-CLIENT_URL=http://localhost:5173
-🚀 Ejecutar en desarrollo
-npm run dev
-🚀 Ejecutar en producción
-npm start
-🗄️ Prisma
-Generar cliente
+DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/tecnired
+JWT_SECRET=CHANGE_ME
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+API_PREFIX=/api/v1
+🗄️ Base de Datos Prisma
+
+Generar cliente:
+
 npm run prisma:generate
-Migraciones
+
+Migraciones desarrollo:
+
 npm run prisma:migrate
-Visualizar DB
+
+Deploy producción:
+
+npm run prisma:deploy
+
+Abrir studio:
+
 npm run prisma:studio
-🔌 WebSockets
+🚀 Ejecutar Proyecto
 
-El backend incluye Socket.IO para:
+Desarrollo:
 
-💬 Chat global y privado
-🔔 Notificaciones en tiempo real
-❤️ Reacciones en posts
-🧠 Eventos de reputación
-📡 API Base
-/api/v1/auth
+npm run dev
+
+Producción:
+
+npm run start:prod
+📡 Endpoints Base
+/health
 /api/v1/users
-/api/v1/posts
-/api/v1/chat
-/api/v1/comments
-/api/v1/reactions
+/api/v1/reputation
 /api/v1/notifications
-🧠 Sistema de Eventos
-
-El backend usa arquitectura event-driven:
-
-Ejemplos:
-
-POST_CREATED
-COMMENT_CREATED
-REACTION_ADDED
-USER_REGISTERED
-REPUTATION_UPDATED
-NOTIFICATION_CREATED
-📊 Reputación
-
-Sistema de gamificación basado en:
-
-Posts creados
-Likes recibidos
-Comentarios
-Actividad general
-
-Incluye:
-
-puntos
-niveles
-ranking futuro
-💬 Chat
-
-Soporta:
-
-Chat global (tipo grupo)
-Chat privado
-Indicador de escritura
-Mensajes en tiempo real
-🔔 Notificaciones
-Persistentes en base de datos
-Enviadas por WebSocket
-Tipos: info, chat, post, reaction, system
-🛡️ Seguridad
-JWT authentication
-Helmet middleware
-Rate limiting
-Input validation (express-validator)
-Sanitización de datos
-⚡ Tecnologías
-Node.js
-Express
-Prisma ORM
-PostgreSQL
-Socket.IO
-Redis
+/api/v1/search
+/api/v1/tools
+⚡ Funcionalidades Core
+Usuarios
+Perfil técnico
+Roles
+Estado cuenta
+Ranking futuro
+Reputación
+Karma
+Méritos
+Historial de puntos
+Escalamiento profesional
+Notificaciones
+Sistema persistente
+Tiempo real
+Push futuro
+Search
+Usuarios
+Posts técnicos
+Fichas
+Herramientas
+Tools
+Calculadoras técnicas
+Utilidades GPS
+Exportaciones
+🔒 Seguridad
+Helmet
+CORS controlado
 JWT
-bcrypt
-Nodemailer
-📈 Estado del proyecto
+Rate Limit
+Sanitización inputs
+Validación DTO
+Hash bcrypt
+📈 Escalabilidad
 
-✔ Backend modular completo
-✔ Realtime system activo
-✔ Event-driven architecture
-✔ Escalable a microservicios
-✔ Listo para MVP / SaaS
+Preparado para:
 
-🚀 Próximos pasos (roadmap)
-Workers (BullMQ)
-Docker + Kubernetes
-Logs centralizados (Pino + ELK)
-Analytics en tiempo real
-Microservicios
-CI/CD automático
+Horizontal scaling
+Workers separados
+Redis distribuido
+CDN futura
+Microservicios progresivos
+CI/CD
+🧪 Calidad
+npm run lint
+npm run test
+npm run check
+🛠️ Roadmap V2
+Chat tiempo real
+Feed social completo
+App móvil integrada
+Métricas avanzadas
+IA técnica
+Moderación automática
 👨‍💻 Autor
 
 Jose Catenacci

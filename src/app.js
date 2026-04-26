@@ -1,63 +1,66 @@
 import express from 'express';
 import http from 'http';
+import compression from 'compression';
+import morgan from 'morgan';
+
+import { env } from './config/env.js';
 
 import { corsMiddleware } from './security/cors.js';
 import { helmetMiddleware } from './security/helmet.js';
 import { rateLimiter } from './security/rateLimiter.js';
 import { sanitizeMiddleware } from './security/sanitize.js';
 
-import { errorMiddleware } from './middleware/error.middleware.js';
-
 import routes from './routes/index.js';
 
-import { initSockets } from './sockets/index.js';
-
-// =========================
-// APP CORE (EXPRESS INSTANCE)
-// =========================
+import { errorMiddleware } from './middleware/error.middleware.js';
+import { notFoundHandler } from './utils/response.js';
 
 const app = express();
 const server = http.createServer(app);
 
-// =========================
-// SECURITY MIDDLEWARES
-// =========================
+app.set('trust proxy', env.TRUST_PROXY);
+
+app.disable('x-powered-by');
+
 app.use(corsMiddleware);
 app.use(helmetMiddleware);
 app.use(rateLimiter);
+app.use(compression());
 
-// =========================
-// BODY PARSER
-// =========================
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+if (env.ENABLE_REQUEST_LOGS) {
+  app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+}
 
-// =========================
-// SANITIZATION LAYER
-// =========================
-sanitizeMiddleware(app);
+app.use(
+  express.json({
+    limit: env.MAX_PAYLOAD_SIZE,
+  }),
+);
 
-// =========================
-// STATIC FILES (UPLOADS)
-// =========================
-app.use('/uploads', express.static('uploads'));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: env.MAX_PAYLOAD_SIZE,
+  }),
+);
 
-// =========================
-// ROUTES
-// =========================
-app.use('/api', routes);
+app.use(sanitizeMiddleware);
 
-// =========================
-// ERROR HANDLER (SIEMPRE AL FINAL)
-// =========================
+app.use('/uploads', express.static(env.UPLOAD_DIR));
+
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    name: env.APP_NAME,
+    environment: env.NODE_ENV,
+    version: 'v1',
+  });
+});
+
+app.use(env.API_PREFIX, routes);
+
+app.use(notFoundHandler);
+
 app.use(errorMiddleware);
 
-// =========================
-// SOCKETS INIT
-// =========================
-const io = initSockets(server);
-
-// =========================
-// EXPORTS
-// =========================
-export { app, server, io };
+export { app, server };

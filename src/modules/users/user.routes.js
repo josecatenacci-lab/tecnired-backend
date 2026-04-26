@@ -1,50 +1,78 @@
 import { Router } from 'express';
+
 import { userController } from './user.controller.js';
-import { authMiddleware } from '../../middleware/auth.middleware.js';
-import { body } from 'express-validator';
-import { validateMiddleware } from '../../middleware/validate.middleware.js';
+
+import {
+  authMiddleware,
+  requireRole,
+} from '../../middleware/auth.middleware.js';
+
+import {
+  validateBody,
+  validateQuery,
+} from '../../middleware/validate.middleware.js';
+
+import {
+  UpdateUserDTO,
+  UserQueryDTO,
+} from '../../dto/user.dto.js';
 
 const router = Router();
 
 // =========================
-// TODAS LAS RUTAS PROTEGIDAS
+// SELF PROFILE
 // =========================
 
-// =========================
-// PERFIL
-// =========================
-router.get('/me', authMiddleware, userController.getProfile);
+router.get(
+  '/me',
+  authMiddleware,
+  userController.getProfile,
+);
 
-// =========================
-// ACTUALIZAR PERFIL
-// =========================
 router.put(
   '/me',
   authMiddleware,
-  [
-    body('name').optional().isString().isLength({ min: 2 }),
-    validateMiddleware,
-  ],
-  userController.updateProfile
+  validateBody(UpdateUserDTO),
+  userController.updateProfile,
 );
 
-// =========================
-// CAMBIAR ROL (ADMIN FUTURO)
-// =========================
-router.patch(
-  '/role',
+router.delete(
+  '/me',
   authMiddleware,
-  [
-    body('userId').notEmpty(),
-    body('role').notEmpty(),
-    validateMiddleware,
-  ],
-  userController.changeRole
+  userController.deleteUser,
 );
 
 // =========================
-// ELIMINAR USUARIO
+// ADMIN / MODERATION
 // =========================
-router.delete('/me', authMiddleware, userController.deleteUser);
+
+router.get(
+  '/',
+  authMiddleware,
+  requireRole('moderator'),
+  validateQuery(UserQueryDTO),
+  userController.getUsers,
+);
+
+router.get(
+  '/:id',
+  authMiddleware,
+  requireRole('moderator'),
+  userController.getUserById,
+);
+
+router.patch(
+  '/:id/role',
+  authMiddleware,
+  requireRole('admin'),
+  userController.changeRole,
+);
+
+router.patch(
+  '/:id/status',
+  authMiddleware,
+  requireRole('moderator'),
+  userController.changeStatus,
+);
 
 export default router;

@@ -1,53 +1,132 @@
 import { userRepository } from './user.repository.js';
-import { pushService } from '../../services/shared/push.service.js';
-import { EVENTS } from '../../constants/events.js';
-import { eventBus } from '../../events/eventBus.js';
+import { isValidRole } from '../../constants/roles.js';
 
-// =========================
-// USER SERVICE (LOGICA DE NEGOCIO)
-// =========================
+const createHttpError = (
+  statusCode,
+  message,
+) => ({
+  statusCode,
+  message,
+});
+
+const sanitizeUser = (user) => {
+  if (!user) return null;
+
+  const { password, ...safeUser } = user;
+
+  return safeUser;
+};
 
 export const userService = {
-  // =========================
-  // OBTENER PERFIL
-  // =========================
   async getProfile(userId) {
-    const user = await userRepository.findById(userId);
+    const user = await userRepository.findById(
+      userId,
+    );
 
     if (!user) {
-      throw { statusCode: 404, message: 'Usuario no encontrado' };
+      throw createHttpError(
+        404,
+        'User not found',
+      );
     }
 
-    return user;
+    return sanitizeUser(user);
   },
 
-  // =========================
-  // ACTUALIZAR PERFIL
-  // =========================
+  async getUsers(query) {
+    return userRepository.findMany(query);
+  },
+
+  async getUserById(userId) {
+    const user = await userRepository.findById(
+      userId,
+    );
+
+    if (!user) {
+      throw createHttpError(
+        404,
+        'User not found',
+      );
+    }
+
+    return sanitizeUser(user);
+  },
+
   async updateProfile(userId, data) {
-    const updatedUser = await userRepository.update(userId, data);
+    const existing =
+      await userRepository.findById(userId);
 
-    return updatedUser;
+    if (!existing) {
+      throw createHttpError(
+        404,
+        'User not found',
+      );
+    }
+
+    const updatedUser =
+      await userRepository.update(
+        userId,
+        data,
+      );
+
+    return sanitizeUser(updatedUser);
   },
 
-  // =========================
-  // CAMBIAR ROL (ADMIN)
-  // =========================
   async changeRole(userId, role) {
-    const updated = await userRepository.updateRole(userId, role);
+    if (!isValidRole(role)) {
+      throw createHttpError(
+        400,
+        'Invalid role',
+      );
+    }
 
-    return updated;
+    const updated =
+      await userRepository.updateRole(
+        userId,
+        role,
+      );
+
+    return sanitizeUser(updated);
   },
 
-  // =========================
-  // ELIMINAR USUARIO
-  // =========================
+  async changeStatus(userId, status) {
+    const allowedStatuses = [
+      'active',
+      'inactive',
+      'suspended',
+      'deleted',
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      throw createHttpError(
+        400,
+        'Invalid status',
+      );
+    }
+
+    const updated =
+      await userRepository.updateStatus(
+        userId,
+        status,
+      );
+
+    return sanitizeUser(updated);
+  },
+
   async deleteUser(userId) {
-    const deleted = await userRepository.delete(userId);
+    const existing =
+      await userRepository.findById(userId);
 
-    // 🔥 EVENTO GLOBAL
-    eventBus.emit(EVENTS.POST_DELETED, { userId });
+    if (!existing) {
+      throw createHttpError(
+        404,
+        'User not found',
+      );
+    }
 
-    return deleted;
+    const deleted =
+      await userRepository.softDelete(userId);
+
+    return sanitizeUser(deleted);
   },
 };

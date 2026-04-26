@@ -8,17 +8,29 @@ datasource db {
 }
 
 // =========================
-// ENUMS (TIPOS DOMINIO)
+// ENUMS
 // =========================
 
 enum UserRole {
   user
+  moderator
   admin
+  super_admin
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+  deleted
 }
 
 enum PostType {
   corte
   comando
+  ficha
+  pregunta
+  aporte
   libre
 }
 
@@ -27,6 +39,7 @@ enum ReactionType {
   dislike
   fire
   heart
+  useful
 }
 
 enum NotificationType {
@@ -35,31 +48,65 @@ enum NotificationType {
   post
   comment
   reaction
+  reputation
   system
 }
 
+enum ReputationEventType {
+  post_created
+  comment_created
+  reaction_received
+  useful_mark_received
+  contribution_validated
+  admin_adjustment
+}
+
+enum NotificationStatus {
+  unread
+  read
+  archived
+}
+
 // =========================
-// USER
+// USERS
 // =========================
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(user)
+  id           String     @id @default(cuid())
+  email        String     @unique
+  password     String
+  name         String
+  username     String?    @unique
+  avatarUrl    String?
+  bio          String?
+  phone        String?
+  role         UserRole   @default(user)
+  status       UserStatus @default(active)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  specialty    String?
+  country      String?
+  city         String?
 
-  posts        Post[]
-  comments     Comment[]
-  reactions    Reaction[]
-  messagesSent Message[] @relation("MessagesSent")
-  messagesRecv Message[] @relation("MessagesReceived")
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
 
-  reputation   Reputation?
+  posts         Post[]
+  comments      Comment[]
+  reactions     Reaction[]
+  messagesSent  Message[]  @relation("MessagesSent")
+  messagesRecv  Message[]  @relation("MessagesReceived")
+
+  reputation    Reputation?
+  reputationEvents ReputationEvent[]
   notifications Notification[]
+
+  @@index([email])
+  @@index([username])
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // =========================
@@ -67,20 +114,38 @@ model User {
 // =========================
 
 model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  type      PostType
-  metadata  Json?
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  type        PostType
+  metadata    Json?
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  brand       String?
+  model       String?
+  year        Int?
+  tags        String[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isPublished Boolean  @default(true)
+  isValidated Boolean  @default(false)
 
-  comments  Comment[]
-  reactions Reaction[]
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  comments    Comment[]
+  reactions   Reaction[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([brand])
+  @@index([model])
+  @@index([year])
+  @@index([isPublished])
+  @@index([isValidated])
+  @@index([createdAt])
 }
 
 // =========================
@@ -94,10 +159,16 @@ model Comment {
   userId    String
   postId    String
 
-  user      User @relation(fields: [userId], references: [id])
-  post      Post @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@index([postId])
+  @@index([createdAt])
 }
 
 // =========================
@@ -105,18 +176,22 @@ model Comment {
 // =========================
 
 model Reaction {
-  id        String @id @default(cuid())
+  id        String       @id @default(cuid())
   type      ReactionType
 
   userId    String
   postId    String
 
-  user      User @relation(fields: [userId], references: [id])
-  post      Post @relation(fields: [postId], references: [id])
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+  @@index([type])
 }
 
 // =========================
@@ -124,17 +199,27 @@ model Reaction {
 // =========================
 
 model Message {
-  id        String @id @default(cuid())
-  content   String
-  room      String @default("global")
+  id          String   @id @default(cuid())
+  content     String
+  room        String   @default("global")
 
-  senderId  String
-  receiverId String?
+  senderId    String
+  receiverId  String?
 
-  sender    User @relation("MessagesSent", fields: [senderId], references: [id])
-  receiver  User? @relation("MessagesReceived", fields: [receiverId], references: [id])
+  sender      User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User?    @relation("MessagesReceived", fields: [receiverId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([room])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
 }
 
 // =========================
@@ -142,15 +227,42 @@ model Message {
 // =========================
 
 model Reputation {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
 
-  userId    String @unique
-  user      User   @relation(fields: [userId], references: [id])
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  points    Int    @default(0)
-  level     Int    @default(1)
+  points    Int      @default(0)
+  level     Int      @default(1)
+  rank      String?
 
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([points])
+  @@index([level])
+}
+
+// =========================
+// REPUTATION EVENTS
+// =========================
+
+model ReputationEvent {
+  id          String              @id @default(cuid())
+
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        ReputationEventType
+  points      Int
+  reason      String?
+  metadata    Json?
+
+  createdAt   DateTime            @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 // =========================
@@ -158,25 +270,23 @@ model Reputation {
 // =========================
 
 model Notification {
-  id        String @id @default(cuid())
+  id        String             @id @default(cuid())
 
   userId    String
-  user      User   @relation(fields: [userId], references: [id])
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type      NotificationType
+  status    NotificationStatus @default(unread)
+
   title     String
   message   String
-  read      Boolean @default(false)
-
   metadata  Json?
 
-  createdAt DateTime @default(now())
-}
+  readAt    DateTime?
+  createdAt DateTime           @default(now())
 
-// =========================
-// INDEXES (OPTIMIZACIÓN)
-// =========================
-
-model _IndexOptimizations {
-  @@ignore
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
 }

@@ -1,25 +1,97 @@
-const isProd = process.env.NODE_ENV === 'production';
+import { env } from '../config/env.js';
 
-// =========================
-// LOGGER SIMPLE PRO
-// =========================
+const levels = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  debug: 3,
+};
+
+const currentLevel =
+  levels[
+    env.LOG_LEVEL
+  ] ?? levels.debug;
+
+const shouldLog = (
+  level,
+) =>
+  levels[level] <=
+  currentLevel;
+
+const format = (
+  level,
+  args,
+) => {
+  const timestamp =
+    new Date().toISOString();
+
+  return [
+    `[${timestamp}]`,
+    `[${level.toUpperCase()}]`,
+    ...args,
+  ];
+};
 
 export const logger = {
-  info: (...args) => {
-    console.log('ℹ️', ...args);
+  error: (...args) => {
+    if (
+      shouldLog(
+        'error',
+      )
+    ) {
+      console.error(
+        ...format(
+          'error',
+          args,
+        ),
+      );
+    }
   },
 
   warn: (...args) => {
-    console.warn('⚠️', ...args);
+    if (
+      shouldLog(
+        'warn',
+      )
+    ) {
+      console.warn(
+        ...format(
+          'warn',
+          args,
+        ),
+      );
+    }
   },
 
-  error: (...args) => {
-    console.error('❌', ...args);
+  info: (...args) => {
+    if (
+      shouldLog(
+        'info',
+      )
+    ) {
+      console.log(
+        ...format(
+          'info',
+          args,
+        ),
+      );
+    }
   },
 
   debug: (...args) => {
-    if (!isProd) {
-      console.debug('🐛', ...args);
+    if (
+      shouldLog(
+        'debug',
+      ) &&
+      env.NODE_ENV !==
+        'production'
+    ) {
+      console.debug(
+        ...format(
+          'debug',
+          args,
+        ),
+      );
     }
   },
 };
